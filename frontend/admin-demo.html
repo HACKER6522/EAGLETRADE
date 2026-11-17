@@ -35,16 +35,27 @@ const keyEl=document.getElementById('adminKey'), statusEl=document.getElementByI
 const key=()=>keyEl.value.trim();
 function message(text,kind=''){statusEl.className='notice '+kind;statusEl.textContent=text;}
 async function api(path,options={}) {
- const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-Admin-Key':key(),...(options.headers||{})}});
- const body=await response.json().catch(()=>({detail:'Server returned an unreadable response.'}));
- if(!response.ok) throw new Error(body.detail||('Request failed ('+response.status+')'));
+ const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','Accept':'application/json','X-Admin-Key':key(),...(options.headers||{})}});
+ const contentType=response.headers.get('content-type')||'unknown content type';
+ const raw=await response.text();
+ let body;
+ try {
+  body=raw ? JSON.parse(raw) : null;
+ } catch (_) {
+  const preview=raw.replace(/\s+/g,' ').slice(0,240);
+  throw new Error('Admin API returned non-JSON data (HTTP '+response.status+', '+contentType+'). '+(preview?'Response: '+preview:'The response body was empty.')+' Check that this page and /api/admin/demo-accounts are served by the same EAGLETRADE backend deployment.');
+ }
+ if(!response.ok) throw new Error((body&&body.detail)||('Request failed ('+response.status+').'));
+ if(!body||typeof body!=='object') throw new Error('Admin API returned an empty or invalid JSON response.');
  return body;
 }
 function el(tag,text){const n=document.createElement(tag);n.textContent=text??'';return n;}
 async function load(){
  if(!key()){message('Enter the admin key first.','error');return;}
  try{
-  const result=await api('/api/admin/demo-accounts');tbody.replaceChildren();
+  const result=await api('/api/admin/demo-accounts');
+  if(!Array.isArray(result.accounts)) throw new Error('Admin API response is missing the accounts list. Expected JSON shaped like {"s":"ok","accounts":[]}. Check that the deployed frontend and backend versions match.');
+  tbody.replaceChildren();
   if(!result.accounts.length){const tr=document.createElement('tr'),td=el('td','No demo accounts yet.');td.colSpan=5;tr.append(td);tbody.append(tr);message('Connected. No demo accounts yet.','ok');return;}
   for(const account of result.accounts){
    const tr=document.createElement('tr');tr.append(el('td',account.username),el('td',account.display_name||'—'));
