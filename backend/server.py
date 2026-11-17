@@ -25,6 +25,7 @@ from backend import subscription_store
 from backend.storage import db
 from backend.virtual_engine import VirtualTradingEngine
 from backend.fyers_client import FyersClient
+from backend.angelone_client import AngelOneClient, AngelOneConfigurationError, AngelOneAPIError
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="EAGLETRADE", description="Virtual trading terminal with mandatory PayPal subscription")
@@ -51,6 +52,7 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 
 virtual_engine = VirtualTradingEngine(initial_capital=1000000.0)
 fyers_client = FyersClient()
+angelone_client = AngelOneClient()
 virtual_engine.fyers_client = fyers_client
 
 
@@ -507,10 +509,15 @@ def get_quotes(symbols: str = Query(..., description="Comma-separated symbols"))
 def get_history(
     symbol: str = Query("NSE:NIFTY50-INDEX"),
     resolution: str = Query("5"),
-    days: int = Query(3),
+    days: int = Query(3, ge=1, le=30),
 ):
-    candles = virtual_engine.get_history(symbol=symbol, resolution=resolution)
-    return {"s": "ok", "mode": "virtual", "candles": candles}
+    try:
+        candles = angelone_client.get_history(symbol=symbol, resolution=resolution, days=days)
+        return {"s": "ok", "source": "ANGELONE_SMARTAPI", "mode": "live", "candles": candles}
+    except AngelOneConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except AngelOneAPIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
 
 
 # ------------------ USER-ISOLATED TRADING ENDPOINTS ------------------
