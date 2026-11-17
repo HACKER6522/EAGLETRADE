@@ -35,6 +35,14 @@ INDEX_ALIASES = {
     "FINNIFTY-INDEX": ("NSE", "FINNIFTY"),
     "MIDCPNIFTY-INDEX": ("NSE", "MIDCPNIFTY"),
 }
+# Stable SmartAPI index tokens from Angel One's exchange instrument master.
+INDEX_TOKENS = {
+    ("NSE", "NIFTY"): "99926000",
+    ("NSE", "BANKNIFTY"): "99926009",
+    ("NSE", "FINNIFTY"): "99926037",
+    ("NSE", "MIDCPNIFTY"): "99926074",
+    ("BSE", "SENSEX"): "99919000",
+}
 
 
 class AngelOneConfigurationError(RuntimeError):
@@ -100,6 +108,9 @@ class AngelOneClient:
 
     def _find_instrument(self, exchange: str, query: str, kind: str) -> str:
         cache_key = (exchange, query)
+        index_token = INDEX_TOKENS.get(cache_key) if kind == "index" else None
+        if index_token:
+            return index_token
         now = time.monotonic()
         with self._cache_lock:
             cached = self._token_cache.get(cache_key)
@@ -134,7 +145,13 @@ class AngelOneClient:
                        and str(item.get("tradingsymbol", "")).upper().endswith("FUT")]
             # SmartAPI's search endpoint returns currently listed matches; use the
             # nearest future expiry when expiry metadata is present.
-            futures.sort(key=lambda item: str(item.get("tradingsymbol", "")))
+            def expiry_key(item: dict[str, Any]) -> dt.date:
+                expiry = str(item.get("expiry", "")).upper()
+                try:
+                    return dt.datetime.strptime(expiry, "%d%b%Y").date()
+                except ValueError:
+                    return dt.date.max
+            futures.sort(key=expiry_key)
             candidates = futures or exact
         elif kind == "index":
             candidates = exact or [
