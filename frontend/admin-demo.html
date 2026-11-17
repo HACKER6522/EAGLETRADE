@@ -42,7 +42,7 @@ async function api(path,options={}) {
  try {
   body=raw ? JSON.parse(raw) : null;
  } catch (_) {
-  const preview=raw.replace(/\\s+/g,' ').slice(0,240);
+  const preview=raw.replace(/\s+/g,' ').slice(0,240);
   throw new Error('Admin API returned non-JSON data (HTTP '+response.status+', '+contentType+'). '+(preview?'Response: '+preview:'The response body was empty.')+' Check that this page and /api/admin/demo-accounts are served by the same EAGLETRADE backend deployment.');
  }
  if(!response.ok) throw new Error((body&&body.detail)||('Request failed ('+response.status+').'));
