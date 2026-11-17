@@ -828,6 +828,7 @@
             <div class="flex items-center gap-1 min-w-0">
               <span class="font-bold text-white text-xs sm:text-sm font-sans tracking-tight truncate max-w-[105px] xs:max-w-[140px] sm:max-w-none" id="active-symbol-title">NSE:NIFTY50-INDEX</span>
               <span class="hidden sm:inline-block text-[9px] text-brand font-mono font-bold bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded flex-shrink-0" id="chart-market-type">F&O ACTIVE</span>
+              <span id="chart-data-source" class="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">ANGEL ONE · API</span>
             </div>
             <div class="flex items-center gap-1 font-mono flex-shrink-0">
               <span class="text-brand font-bold text-xs sm:text-sm" id="active-symbol-ltp">25,425.00</span>
@@ -5010,6 +5011,8 @@
         if (!res.ok) throw new Error(`History request failed: ${res.status}`);
         const data = await res.json();
         if (data.candles && data.candles.length && symbolToLoad === currentSymbol) {
+          const sourceBadge = document.getElementById('chart-data-source');
+          if (sourceBadge) { sourceBadge.innerText = 'ANGEL ONE · HISTORICAL API'; sourceBadge.title = 'Candles loaded from Angel One SmartAPI'; }
           candleSeries.setData(data.candles);
           if (splitCandleSeries) {
             splitCandleSeries.setData(data.candles);
@@ -5022,14 +5025,24 @@
           chart.timeScale().fitContent();
         }
       } catch (err) {
-        console.error('Failed to load chart data:', err);
+        console.error('Failed to load Angel One chart data:', err);
+        const sourceBadge = document.getElementById('chart-data-source');
+        if (sourceBadge) {
+          sourceBadge.innerText = 'ANGEL ONE · ERROR';
+          sourceBadge.className = 'text-[9px] font-mono font-bold text-rose-400 px-1.5 py-0.5 rounded border border-rose-500/20';
+          sourceBadge.title = err.message || 'Angel One chart data could not be loaded';
+        }
+        if (typeof showToast === 'function') showToast(err.message || 'Angel One chart data could not be loaded', 'error');
       } finally {
         isLoadingChartData = false;
       }
     }
 
-    // History is loaded on symbol/timeframe changes; live quote updates amend the
-    // forming candle incrementally instead of replacing the complete series.
+    // Refresh Angel One historical candles periodically. SmartAPI history remains
+    // the source of truth; don't mix ticks from a different market-data provider.
+    setInterval(() => {
+      if (currentWorkstation === 'chart' && currentMainView === 'chart') loadChartData();
+    }, 60000);
 
     function setResolution(res) {
       currentResolution = res;
