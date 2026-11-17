@@ -5008,8 +5008,8 @@
       lastCandleSymbol = '';
       try {
         const res = await fetch(`/api/history?symbol=${encodeURIComponent(symbolToLoad)}&resolution=${currentResolution}`);
-        if (!res.ok) throw new Error(`History request failed: ${res.status}`);
         const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || `History request failed: ${res.status}`);
         if (data.candles && data.candles.length && symbolToLoad === currentSymbol) {
           const sourceBadge = document.getElementById('chart-data-source');
           if (sourceBadge) { sourceBadge.innerText = 'ANGEL ONE · HISTORICAL API'; sourceBadge.title = 'Candles loaded from Angel One SmartAPI'; }
