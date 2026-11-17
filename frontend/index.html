@@ -6059,7 +6059,7 @@
             }
 
             // Real-Time Candlestick Chart Live Streaming Tick
-            if (candleSeries && lastCandle && lastCandleSymbol === currentSymbol) {
+            if (q.source === 'ANGELONE_SMARTAPI' && candleSeries && lastCandle && lastCandleSymbol === currentSymbol) {
               const curPrice = Number(q.ltp);
               if (!isNaN(curPrice) && curPrice > 0) {
                 try {
