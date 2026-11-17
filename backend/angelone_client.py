@@ -92,7 +92,8 @@ class AngelOneClient:
         if ticker.endswith("-EQ"):
             return exchange, ticker, "equity"
         if ticker.endswith("-FUT"):
-            return exchange, ticker[:-4], "future"
+            futures_exchange = "BFO" if exchange == "BSE" else "NFO"
+            return futures_exchange, ticker[:-4], "future"
         if ticker.endswith("-INDEX"):
             return exchange, ticker[:-6], "index"
         return exchange, ticker, "equity"
